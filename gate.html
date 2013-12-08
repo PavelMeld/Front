@@ -6,13 +6,22 @@
 		<link rel="stylesheet" href="gate.css" type="text/css" media="all" />
 		<script src='js/raphael-min.js'>
 		</script>
-		<script src='js/jquery-1.5.1.min.js'>
+		<script src='js/jquery-1.9.0.min.js'>
 		</script>
 		<script>
 			var g_page = null;
 			var g_idx  = 1;
 			var g_gates= {};
+			var g_image_width  = 800;
+			var g_image_height = 600;
 
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+//		Add drag functionality to circle
+//
+//
+////////////////////////////////////////////////////////////////////////////////
 			function handle_circle(circ, fill, line, path_id, pivot) {
 				circ.attr("fill",  fill);
 				circ.data("line",  line);
@@ -20,10 +29,10 @@
 				circ.data("pivot", pivot);
 
 				circ.drag(function(dx,dy) {
-					var tx,ty,i,p,l,c;
+					var tx,ty,i,p,l,c, label;
 
-					tx = Math.min(Math.max(this.x + dx, 15), 785);
-					ty = Math.min(Math.max(this.y + dy, 15), 585);
+					tx = Math.min(Math.max(this.x + dx, 15), g_image_width - 30);
+					ty = Math.min(Math.max(this.y + dy, 15), g_image_height- 30);
 
 				    this.attr({
 						cx: tx,
@@ -38,9 +47,9 @@
 					p[i][2] = ty;
 					l.attr({'path': p});
 
-					c = calc_third(p);
-					p = this.data("pivot");
-					p.attr({x:c.x, y: c.y});
+					c     = calc_third(p);
+					label = this.data("pivot");
+					label.attr({x:c.x, y: c.y});
 
 					$("#x0").text(p[0][1]);
 					$("#y0").text(p[0][2]);
@@ -101,19 +110,42 @@
 
 			}
 
-			function new_gate() {
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+//		Create new gate
+//
+//
+////////////////////////////////////////////////////////////////////////////////
+			function create_gate() {
 				var c1,c2,lbl, line;
 				var path, coords
-				var html;
+				var html, name;
+				var x1,y1,x2,y2;
+
+				// Add new line button clicked
+				if (arguments.length < 5) {
+					name = "label"+g_idx;
+					x1 = 15 + Math.random()*(g_image_width  - 30);
+					y1 = 15 + Math.random()*(g_image_height - 30);
+					x2 = 15 + Math.random()*(g_image_width  - 30);
+					y2 = 15 + Math.random()*(g_image_height - 30);
+				} else {
+					name = new String(arguments[0]);
+					x1   = Number(arguments[1]);
+					y1   = Number(arguments[2]);
+					x2   = Number(arguments[3]);
+					y2   = Number(arguments[4]);
+				}
 
 
-				path = [["M", 200, 100], ["L", 350,100]];
+				path = [["M", x1, y1], ["L", x2, y2]];
 				line = g_page.path(path);
 				line.attr({stroke: Raphael.getColor(), "stroke-width": 4});
 				c1 = g_page.circle(path[0][1], path[0][2], 10);
 				c2 = g_page.circle(path[1][1], path[1][2], 10);
 				coords = calc_third(path);
-				lbl = g_page.text(coords.x,coords.y,"label"+g_idx).attr({'font-size':15});
+				lbl = g_page.text(coords.x,coords.y, name).attr({'font-size':15});
 				handle_circle(c1, "white", line, 0, lbl);
 				handle_circle(c2, "green", line, 1, lbl);
 				lbl.data({id: g_idx});
@@ -122,7 +154,6 @@
 
 				html = "<table id='lbl_info_"+g_idx+"'><tr><td id='lbl"+g_idx+"'>"+lbl.attr("text")+"</td><td><input type='button' onclick='delete_gate("+g_idx+")' value='-'> </td></tr></table>";
 				$("#info").append(html);
-
 
 				g_idx++;
 			}
@@ -133,15 +164,53 @@
 					setTimeout(function() { update_background("#field"); } , 100)
 			}
 
+////////////////////////////////////////////////////////////////////////////////
+//
+//	
+//	Show configuration received from server
+//
+//
+////////////////////////////////////////////////////////////////////////////////
+			function show_server_lines(serverData) {
+				var n,g;
+				var x1,y1,x2,y2,gateName;
+
+				for (n=0;n<serverData.length;n++) {
+					// TODO: Create paper for each camera
+					for (g=0;g<serverData[n].gates.length;g++) {
+						gateName = serverData[n].gates[g].name;
+						x1 = serverData[n].gates[g].x1;
+						y1 = serverData[n].gates[g].y1;
+						x2 = serverData[n].gates[g].x2;
+						y2 = serverData[n].gates[g].y2;
+						create_gate(gateName, x1,y1,x2,y2);
+					}
+				}
+			}
+
+			function load_lines() {
+				$.ajax({
+					url : 	  "/ajax.php",
+					type: 	  "POST",
+					dataType: "json",
+					data 	: {
+						action : 0	/* Get data */
+					},
+					success:  show_server_lines
+				});
+			}
+
 			function init() {
 				var pos;
 
-				g_page = Raphael(document.getElementById("field"), 800, 600);
-				$("#add").click(new_gate);
+				g_page = Raphael(document.getElementById("field"), g_image_width, g_image_height);
+				$("#add").click(create_gate);
 				pos = $("#field").offset();
 				$("#bg").offset(pos);
 
-				setTimeout(function() { update_background("#field"); } , 1000)
+				load_lines();
+
+				//setTimeout(function() { update_background("#field"); } , 1000)
 			}
 
 
@@ -158,7 +227,16 @@
 			</div>
 		</div>
 
+<!--
 		<div id="bg">
+		</div>
+-->
+		
+		<div>
+			<span id="x0">x0</span>
+			<span id="y0">y0</span>
+			<span id="x1">x1</span>
+			<span id="y1">y1</span>
 		</div>
 	</body>
 </html>
