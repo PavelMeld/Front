@@ -1,62 +1,58 @@
 <?
-	define("GET_CONFIG", 0);
-	define("CONFIG_PATH", "config/lines.cfg");
+	require_once("config/config.php");
+
+	define("GET_CONFIG", 	0);
+	define("RENAME_CAMERA", 1);
+	define("RENAME_GATE",	2);
+	define("MOVE_GATE",		3);
+	define("ADD_GATE",		4);
+	define("DEL_GATE",		5);
 
 	/*
 		TODO: Add user authentication
 	*/
 
 	$action = @$_POST['action'];
+	//$action = ADD_GATE;
 
 	if (!isset($action)) {
 		echo json_encode(array());
 		return;
 	}
 	
-	// Send configuration to user browser
-
+	// send configuration to user browser
 	if ($action == GET_CONFIG) {
-		$config_camera = '/^\s*([^:]+)\s*:\s*([0-9a-f]{2})[:-]([0-9a-f]{2})[:-]([0-9a-f]{2})[:-]([0-9a-f]{2})[:-]([0-9a-f]{2})[:-]([0-9a-f]{2})\s+(\d+)\s*x\s*(\d+)\s*$/iu';
-		$config_gate   = '/^\s*(.+)\s*\((\d+)\s*,\s*(\d+)\)\s*\((\d+),(\d+)\)\s*$/u';
+		$cfg = config_load();
+		echo json_encode($cfg);
+	}
 
-		$data = file(CONFIG_PATH);
-		if ($data === NULL) {
-			echo json_encode(NULL);
-			return;
-		}
+	// send configuration to user browser
+	if ($action == ADD_GATE) {
+		$cfg = config_load();
 
-		$config = array();
+		$cam = @$_POST['camera'];
+		if (!isset($cam))
+			$cam = 0;
+		$width  = $cfg[$cam]["width"];
+		$height = $cfg[$cam]["height"];
 
-		$status = 0;
-		for ($n=0; $n<sizeof($data); $n++) {
-			$str = $data[$n];
-		
-			if (preg_match($config_camera, $str, $matches)) {
-				$name  = $matches[1];
-				$hw_id = $matches[2].$matches[3].$matches[4].$matches[5].$matches[6].$matches[7];
-				$width = $matches[8];
-				$height= $matches[9];
+		$name = "label".(count($cfg[$cam]["gates"]) + 1);
+		$x1 = rand(15, $width-15);
+		$x2 = rand(15, $width-15);
+		$y1 = rand(15, $height-15);
+		$y2 = rand(15, $height-15);
 
-				$gates = array();
-				array_push($config, 
-						   array("hw" => $hw_id, 
-						         "name" => $name, 
-								 "gates" => &$gates,
-								 "width" => $width,
-								 "height"=> $height));
-				$status = 1;
-				continue;
-			}
+		$new_gate = array(
+							"name" => $name,
+							"x1" => $x1,
+							"y1" => $y1,
+							"x2" => $x2,
+							"y2" => $y2
+						);
 
-			if ($status == 1 && preg_match($config_gate, $str, $matches)) {
-				array_push($gates, array("name"=>$matches[1],
-										 "x1"  =>$matches[2],
-										 "y1"  =>$matches[3],
-										 "x2"  =>$matches[4],
-										 "y2"  =>$matches[5]));
-				continue;
-			}
-		}
-		echo json_encode($config);
+		echo json_encode($new_gate);
+
+		array_push($cfg[$cam]["gates"], $new_gate);
+		config_save($cfg);
 	}
 ?>

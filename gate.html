@@ -51,10 +51,12 @@
 					label = this.data("pivot");
 					label.attr({x:c.x, y: c.y});
 
+/*
 					$("#x0").text(p[0][1]);
 					$("#y0").text(p[0][2]);
 					$("#x1").text(p[1][1]);
 					$("#y1").text(p[1][2]);
+*/					
 				  },
 				  function() {
 					  this.x = this.attr("cx");
@@ -113,31 +115,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
-//		Create new gate
+//		Display new gate
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
-			function create_gate() {
+			function register_gate(name, x1, y1, x2, y2) {
 				var c1,c2,lbl, line;
 				var path, coords
-				var html, name;
-				var x1,y1,x2,y2;
-
-				// Add new line button clicked
-				if (arguments.length < 5) {
-					name = "label"+g_idx;
-					x1 = 15 + Math.random()*(g_image_width  - 30);
-					y1 = 15 + Math.random()*(g_image_height - 30);
-					x2 = 15 + Math.random()*(g_image_width  - 30);
-					y2 = 15 + Math.random()*(g_image_height - 30);
-				} else {
-					name = new String(arguments[0]);
-					x1   = Number(arguments[1]);
-					y1   = Number(arguments[2]);
-					x2   = Number(arguments[3]);
-					y2   = Number(arguments[4]);
-				}
-
+				var html;
 
 				path = [["M", x1, y1], ["L", x2, y2]];
 				line = g_page.path(path);
@@ -179,15 +164,22 @@
 					// TODO: Create paper for each camera
 					for (g=0;g<serverData[n].gates.length;g++) {
 						gateName = serverData[n].gates[g].name;
-						x1 = serverData[n].gates[g].x1;
-						y1 = serverData[n].gates[g].y1;
-						x2 = serverData[n].gates[g].x2;
-						y2 = serverData[n].gates[g].y2;
-						create_gate(gateName, x1,y1,x2,y2);
+						x1 = Number(serverData[n].gates[g].x1);
+						y1 = Number(serverData[n].gates[g].y1);
+						x2 = Number(serverData[n].gates[g].x2);
+						y2 = Number(serverData[n].gates[g].y2);
+						register_gate(gateName, x1,y1,x2,y2);
 					}
 				}
 			}
 
+////////////////////////////////////////////////////////////////////////////////
+//
+//	
+//	Query gates from server
+//
+//
+////////////////////////////////////////////////////////////////////////////////
 			function load_lines() {
 				$.ajax({
 					url : 	  "/ajax.php",
@@ -200,6 +192,41 @@
 				});
 			}
 
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+//	Create new gate
+//
+//
+////////////////////////////////////////////////////////////////////////////////
+			function create_gate() {
+				$.ajax({
+					url : 	  "/ajax.php",
+					type: 	  "POST",
+					dataType: "json",
+					data 	: {
+						action : 4,	/* Create new gate */
+						camera : 0  /* TODO: Handle camera */
+					},
+					success:  function (data) {
+						var name, x1, y1, x2, y2;
+						name = data.name;
+						x1 = Number(data.x1);
+						y1 = Number(data.y1);
+						x2 = Number(data.x2);
+						y2 = Number(data.y2);
+						register_gate(name, x1,y1,x2,y2);
+					}
+				});
+			}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+//	Initialize application
+//
+//
+////////////////////////////////////////////////////////////////////////////////
 			function init() {
 				var pos;
 
