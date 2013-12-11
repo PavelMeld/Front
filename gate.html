@@ -15,6 +15,48 @@
 			var g_image_width  = 800;
 			var g_image_height = 600;
 
+			var GET_CONFIG = 0;
+			var UPDATE_GATE= 2;
+			var ADD_GATE   = 3;
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+//		Make Gate update request
+//
+//
+////////////////////////////////////////////////////////////////////////////////
+			function update_gate(gid) {
+				var x1,y1,x2,y2,name;
+				var cam, id, l, p;
+
+				l   = g_gates[gid].line;
+				p   =    l.attr("path");
+				x1  = p[0][1];
+				y1  = p[0][2];
+				x2  = p[1][1];
+				y2  = p[1][2];
+				cam = g_gates[gid].camera;
+				id  = g_gates[gid].id;
+				name=g_gates[gid].lbl.attr("text");
+
+				$.ajax({
+					url : 	  "/ajax.php",
+					type: 	  "POST",
+					dataType: "json",
+					data 	: {
+						action : UPDATE_GATE,
+						camera : cam,
+						id	   : id,
+						name   : name,
+						x1	   : x1,
+						x2	   : x2,
+						y1	   : y1,
+						y2	   : y2
+					}
+				});
+			}
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
@@ -22,46 +64,46 @@
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
-			function handle_circle(circ, fill, line, path_id, pivot) {
+			function handle_circle(circ, fill, line, path_id, pivot, g_id) {
 				circ.attr("fill",  fill);
 				circ.data("line",  line);
 				circ.data("idx",   path_id);
 				circ.data("pivot", pivot);
+				circ.data("g_id",  g_id);
 
-				circ.drag(function(dx,dy) {
-					var tx,ty,i,p,l,c, label;
+				circ.drag(
+					function(dx,dy) {
+						var tx,ty,i,p,l,c, label;
 
-					tx = Math.min(Math.max(this.x + dx, 15), g_image_width - 30);
-					ty = Math.min(Math.max(this.y + dy, 15), g_image_height- 30);
+						tx = Math.min(Math.max(this.x + dx, 15), g_image_width - 30);
+						ty = Math.min(Math.max(this.y + dy, 15), g_image_height- 30);
 
-				    this.attr({
-						cx: tx,
-						cy: ty
-					});
+						this.attr({
+							cx: tx,
+							cy: ty
+						});
 
-					l = this.data("line");
-					p =    l.attr("path");
-					i = this.data("idx");
+						l = this.data("line");
+						p =    l.attr("path");
+						i = this.data("idx");
 
-					p[i][1] = tx;
-					p[i][2] = ty;
-					l.attr({'path': p});
+						p[i][1] = tx;
+						p[i][2] = ty;
+						l.attr({'path': p});
 
-					c     = calc_third(p);
-					label = this.data("pivot");
-					label.attr({x:c.x, y: c.y});
-
-/*
-					$("#x0").text(p[0][1]);
-					$("#y0").text(p[0][2]);
-					$("#x1").text(p[1][1]);
-					$("#y1").text(p[1][2]);
-*/					
-				  },
-				  function() {
-					  this.x = this.attr("cx");
-					  this.y = this.attr("cy");
-				  });
+						c     = calc_third(p);
+						label = this.data("pivot");
+						label.attr({x:c.x, y: c.y});
+					},
+					function() {
+						this.x = this.attr("cx");
+						this.y = this.attr("cy");
+					},
+					function () {
+						gid = this.data("g_id");
+						update_gate(gid);
+					}
+				);
 			}
 
 			function calc_third(path) {
@@ -86,13 +128,27 @@
 			}
 
 
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+//		Change gate name
+//
+//
+////////////////////////////////////////////////////////////////////////////////
 			function rename_gate() {
 				var answer;
+				var gid;
 
+				
 				answer = prompt("Label", this.attr("text"));
 				if (answer == null)
 					return;
+
 				this.attr({text:answer});
+
+				gid = this.data('id');
+				update_gate(gid);
+
 				$("#lbl"+this.data('id')).text(answer);
 			}
 
@@ -119,7 +175,7 @@
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
-			function register_gate(name, x1, y1, x2, y2) {
+			function register_gate(cam, id, name, x1, y1, x2, y2) {
 				var c1,c2,lbl, line;
 				var path, coords
 				var html;
@@ -131,11 +187,18 @@
 				c2 = g_page.circle(path[1][1], path[1][2], 10);
 				coords = calc_third(path);
 				lbl = g_page.text(coords.x,coords.y, name).attr({'font-size':15});
-				handle_circle(c1, "white", line, 0, lbl);
-				handle_circle(c2, "green", line, 1, lbl);
+				handle_circle(c1, "white", line, 0, lbl, g_idx);
+				handle_circle(c2, "green", line, 1, lbl, g_idx);
 				lbl.data({id: g_idx});
 				lbl.click(rename_gate);
-				g_gates[g_idx] = {start:c1, end:c2, line:line, lbl:lbl};
+				g_gates[g_idx] = {	
+									camera	:	cam, 
+									id		:	id,
+									start	:	c1, 
+									end		:	c2, 
+									line	:	line, 
+									lbl		:	lbl
+								};
 
 				html = "<table id='lbl_info_"+g_idx+"'><tr><td id='lbl"+g_idx+"'>"+lbl.attr("text")+"</td><td><input type='button' onclick='delete_gate("+g_idx+")' value='-'> </td></tr></table>";
 				$("#info").append(html);
@@ -168,7 +231,7 @@
 						y1 = Number(serverData[n].gates[g].y1);
 						x2 = Number(serverData[n].gates[g].x2);
 						y2 = Number(serverData[n].gates[g].y2);
-						register_gate(gateName, x1,y1,x2,y2);
+						register_gate(n, g, gateName, x1,y1,x2,y2);
 					}
 				}
 			}
@@ -186,7 +249,7 @@
 					type: 	  "POST",
 					dataType: "json",
 					data 	: {
-						action : 0	/* Get data */
+						action : GET_CONFIG	/* Get data */
 					},
 					success:  show_server_lines
 				});
@@ -200,22 +263,27 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 			function create_gate() {
+				var cam = 0;				/* TODO: Handle camera */
+
 				$.ajax({
 					url : 	  "/ajax.php",
 					type: 	  "POST",
 					dataType: "json",
 					data 	: {
-						action : 4,	/* Create new gate */
-						camera : 0  /* TODO: Handle camera */
+						action : ADD_GATE,	/* Create new gate */
+						camera : cam
 					},
 					success:  function (data) {
 						var name, x1, y1, x2, y2;
+						var id;
 						name = data.name;
-						x1 = Number(data.x1);
-						y1 = Number(data.y1);
-						x2 = Number(data.x2);
-						y2 = Number(data.y2);
-						register_gate(name, x1,y1,x2,y2);
+						x1   = Number(data.x1);
+						y1   = Number(data.y1);
+						x2   = Number(data.x2);
+						y2   = Number(data.y2);
+						id   = Number(data.id);
+
+						register_gate(cam, id, name, x1,y1,x2,y2);
 					}
 				});
 			}

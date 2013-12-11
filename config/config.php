@@ -24,7 +24,7 @@
 			$str = $data[$n];
 		
 			if (preg_match($config_camera, $str, $matches)) {
-				$name  = $matches[1];
+				$name  = trim($matches[1]);
 				$hw_id = $matches[2].$matches[3].$matches[4].$matches[5].$matches[6].$matches[7];
 				$width = $matches[8];
 				$height= $matches[9];
@@ -41,7 +41,7 @@
 			}
 
 			if ($status == 1 && preg_match($config_gate, $str, $matches)) {
-				array_push($gates, array("name"=>$matches[1],
+				array_push($gates, array("name"=>trim($matches[1]),
 										 "x1"  =>$matches[2],
 										 "y1"  =>$matches[3],
 										 "x2"  =>$matches[4],

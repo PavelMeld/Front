@@ -3,10 +3,9 @@
 
 	define("GET_CONFIG", 	0);
 	define("RENAME_CAMERA", 1);
-	define("RENAME_GATE",	2);
-	define("MOVE_GATE",		3);
-	define("ADD_GATE",		4);
-	define("DEL_GATE",		5);
+	define("UPDATE_GATE",	2);
+	define("ADD_GATE",		3);
+	define("DEL_GATE",		4);
 
 	/*
 		TODO: Add user authentication
@@ -44,15 +43,46 @@
 
 		$new_gate = array(
 							"name" => $name,
-							"x1" => $x1,
-							"y1" => $y1,
-							"x2" => $x2,
-							"y2" => $y2
+							"x1"   => $x1,
+							"y1"   => $y1,
+							"x2"   => $x2,
+							"y2"   => $y2,
+							"id"   => count($cfg[$cam])
 						);
 
 		echo json_encode($new_gate);
 
 		array_push($cfg[$cam]["gates"], $new_gate);
 		config_save($cfg);
+	}
+
+	// send configuration to user browser
+	if ($action == UPDATE_GATE) {
+		$cfg = config_load();
+
+		$cam = @$_POST['camera'];
+		$id  = @$_POST['id'];
+		$name= @$_POST['name'];
+		$x1  = @$_POST['x1'];
+		$x2  = @$_POST['x2'];
+		$y1  = @$_POST['y1'];
+		$y2  = @$_POST['y2'];
+		if (!isset($cam) || !isset($id) || !isset($name) ||
+			!isset($x1)	 || !isset($y1) || 
+			!isset($x2)	 ||	!isset($y2)) {
+			echo json_encode("Can't change gate - not all parameters received");
+			return ;
+		}
+
+		$cfg[$cam]["gates"][$id]["name"] = $name;
+		$cfg[$cam]["gates"][$id]["x1"] 	= $x1;
+		$cfg[$cam]["gates"][$id]["x2"] 	= $x2;
+		$cfg[$cam]["gates"][$id]["y1"] 	= $y1;
+		$cfg[$cam]["gates"][$id]["y2"] 	= $y2;
+
+		config_save($cfg);
+
+		echo json_encode("OK, Gate updated");
+		return;
 	}
 ?>
