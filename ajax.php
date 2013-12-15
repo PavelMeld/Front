@@ -1,5 +1,6 @@
 <?
 	require_once("config/config.php");
+	require_once("signal.php");
 
 	define("GET_CONFIG", 	0);
 	define("RENAME_CAMERA", 1);
@@ -47,13 +48,14 @@
 							"y1"   => $y1,
 							"x2"   => $x2,
 							"y2"   => $y2,
-							"id"   => count($cfg[$cam])
+							"id"   => count($cfg[$cam]["gates"])
 						);
 
 		echo json_encode($new_gate);
 
 		array_push($cfg[$cam]["gates"], $new_gate);
 		config_save($cfg);
+		signal_python(RELOAD_CONFIG);
 	}
 
 	// send configuration to user browser
@@ -74,6 +76,8 @@
 			return ;
 		}
 
+		// TODO: Skip if '$id' not found in 'gates'
+
 		$cfg[$cam]["gates"][$id]["name"] = $name;
 		$cfg[$cam]["gates"][$id]["x1"] 	= $x1;
 		$cfg[$cam]["gates"][$id]["x2"] 	= $x2;
@@ -81,6 +85,7 @@
 		$cfg[$cam]["gates"][$id]["y2"] 	= $y2;
 
 		config_save($cfg);
+		signal_python(RELOAD_CONFIG);
 
 		echo json_encode("OK, Gate updated");
 		return;
