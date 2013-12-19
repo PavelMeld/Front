@@ -7,6 +7,7 @@ import signal
 import numpy
 import re
 import pprint
+import math
 
 VIDEO_STUB  = "records/record.avi"
 CONFIG_FILE = "config/config.txt"
@@ -17,6 +18,7 @@ make_snapshot = False;
 read_config   = False;
 config 		  = [];
 
+TRACK_ZONE    = 50
 #
 #
 #	Signal handler checks for action initiated by remote process
@@ -31,6 +33,51 @@ def signal_handler(sig, frame):
 	if sig == signal.SIGUSR1:
 		read_config = True;
 
+#
+#
+#	Get angle of vector P1->P2
+#
+#
+def getAngle(p1, p2):
+	dx = p2[0]-p1[0]
+	dy = p2[1]-p1[1]
+	if dy == 0:
+		if p2[0] > p1[0]:
+			return 0;
+		else:
+			return 180;
+
+	if dx == 0:
+		if y2[1] > y1[1]:
+			return 90;
+		else:
+			return 270;
+
+	ang = math.degrees(math.atan(dy/dx))	
+
+	if p2[0] < p1[0]:
+		ang = ang + 180
+	else:
+		if p2[1] < p1[1]:
+			ang = ang + 360
+
+	return ang
+
+#
+#
+#	Draw Zone rectangle
+#
+#
+def rotatedRect(img, p1, p2, color, thickness):
+	angle = getAngle(p1, p2)
+	p3 = (int(p2[0] + TRACK_ZONE * math.cos(math.radians(angle+90))),
+		  int(p2[1] + TRACK_ZONE * math.sin(math.radians(angle+90))))
+	p4 = (int(p1[0] + TRACK_ZONE * math.cos(math.radians(angle+90))),
+		  int(p1[1] + TRACK_ZONE * math.sin(math.radians(angle+90))))
+	cv2.line(img, p1, p2, color, thickness)
+	cv2.line(img, p2, p3, color, thickness)
+	cv2.line(img, p3, p4, color, thickness)
+	cv2.line(img, p4, p1, color, thickness)
 #
 #
 #	Object tracker main loop
@@ -98,8 +145,15 @@ def tracker():
 		for gate in cam["gates"]:
 			p1 = gate["p1"];
 			p2 = gate["p2"];
-			cv2.line(img, p1, p2, 0xFF, 2)
+			cv2.line(img, p1, p2, (0xFF,0,0), 2)
+			cv2.putText(img, "p1", p1, cv2.FONT_HERSHEY_SIMPLEX, 1, 0xFF);
+			cv2.putText(img, "p2", p2, cv2.FONT_HERSHEY_SIMPLEX, 1, 0xFF);
+			rotatedRect(img, p1, p2, (0, 0xFF, 0) , 1);
+			rotatedRect(img, p2, p1, (0, 0, 0xFF) , 1);
+			#print gate["name"]
 			
+
+		#break;
 		
 		cv2.imshow("Camera", img)
 
